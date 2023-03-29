@@ -1,0 +1,137 @@
+version: '3'
+services:
+  web:
+    image: webdevops/php-apache-dev:8.2
+    container_name: web
+    restart: always
+    #user: application
+    environment:
+      - WEB_ALIAS_DOMAIN=magento-ce.local
+      #- WEB_DOCUMENT_ROOT=/app/pub
+      #- PHP_DATE_TIMEZONE=EST
+      #- PHP_DISPLAY_ERRORS=1
+      #- PHP_MEMORY_LIMIT=2048M
+      #- PHP_MAX_EXECUTION_TIME=300
+      #- PHP_POST_MAX_SIZE=500M
+      #- PHP_UPLOAD_MAX_FILESIZE=1024M
+    ports:
+      - "80:80"
+      - "443:443"
+      - "32823:22"
+    links:
+      - db
+    volumes:
+      - .:/app:cached
+      - magento-ce-composer-cache:/root/.composer/cache/
+    networks:
+      - magento-ce-net
+    depends_on:
+      - db
+      - redis
+      - opensearch-node1
+  db:
+    image: mariadb:10.6
+    container_name: mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=magento
+    volumes:
+      - magento-ce-mysql:/var/lib/mysql
+    networks:
+      - magento-ce-net
+
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - magento-ce-redis:/data
+    networks:
+      - magento-ce-net
+  opensearch-node1:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node1
+    environment:
+      - cluster.name=opensearch-cluster # Name the cluster
+      - node.name=opensearch-node1 # Name the node that will run in this container
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2 # Nodes to look for when discovering the cluster
+      - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2 # Nodes eligibile to serve as cluster manager
+      - bootstrap.memory_lock=true # Disable JVM heap memory swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # Set min and max JVM heap sizes to at least 50% of system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true" # Disables security plugin
+    ulimits:
+      memlock:
+        soft: -1 # Set memlock to unlimited (no soft or hard limit)
+        hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
+    volumes:
+      - opensearch-data1:/usr/share/opensearch/data # Creates volume called opensearch-data1 and mounts it to the container
+    ports:
+      - 9200:9200 # REST API
+      - 9600:9600 # Performance Analyzer
+    networks:
+      - magento-ce-net # All of the containers will join the same Docker bridge network
+  opensearch-node2:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node2
+    environment:
+      - cluster.name=opensearch-cluster # Name the cluster
+      - node.name=opensearch-node2 # Name the node that will run in this container
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2 # Nodes to look for when discovering the cluster
+      - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2 # Nodes eligibile to serve as cluster manager
+      - bootstrap.memory_lock=true # Disable JVM heap memory swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # Set min and max JVM heap sizes to at least 50% of system RAM
+      - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - "DISABLE_SECURITY_PLUGIN=true" # Disables security plugin
+    ulimits:
+      memlock:
+        soft: -1 # Set memlock to unlimited (no soft or hard limit)
+        hard: -1
+      nofile:
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        hard: 65536
+    volumes:
+      - opensearch-data2:/usr/share/opensearch/data # Creates volume called opensearch-data2 and mounts it to the container
+    networks:
+      - magento-ce-net # All of the containers will join the same Docker bridge network
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601 # Map host port 5601 to container port 5601
+    expose:
+      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch-node1:9200","http://opensearch-node2:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true" # disables security dashboards plugin in OpenSearch Dashboards
+    networks:
+      - magento-ce-net
+  mailhog_smtp:
+    image: mailhog/mailhog
+    ports:
+      - 1025:1025 # SMTP server
+      - 8025:8025 # Web UI
+    networks:
+      magento-ce-net:
+        aliases:
+          - smtp.magento-ce.local
+
+networks:
+  magento-ce-net:
+    driver: bridge
+volumes:
+  magento-ce-composer-cache:
+  magento-ce-mysql:
+    driver: local
+  magento-ce-redis:
+    driver: local
+  opensearch-data1:
+    driver: local
+  opensearch-data2:
+    driver: local
