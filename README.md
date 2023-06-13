@@ -48,3 +48,14 @@ bin/magento setup:install \
 --opensearch-timeout=15
 
 ```
+
+### Disable 2FA into your dev env
+
+```shell
+php bin/magento module:disable {Magento_AdminAdobeImsTwoFactorAuth,Magento_TwoFactorAuth}
+php bin/magento setup:upgrade
+php bin/magento setup:di:compile
+php bin/magento setup:static-content:deploy -f
+php bin/magento indexer:reindex
+php bin/magento cache:flush
+```
