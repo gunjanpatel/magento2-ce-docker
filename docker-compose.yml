@@ -3,7 +3,7 @@ services:
   web:
     image: webdevops/php-apache-dev:8.2
     container_name: web
-    restart: always
+    #restart: always
     #user: application
     environment:
       - WEB_ALIAS_DOMAIN=magento-ce.local
@@ -15,7 +15,7 @@ services:
       #- PHP_POST_MAX_SIZE=500M
       #- PHP_UPLOAD_MAX_FILESIZE=1024M
     ports:
-      - "80:80"
+      - "8080:8080"
       - "443:443"
       - "32823:22"
     links:
@@ -32,7 +32,7 @@ services:
   db:
     image: mariadb:10.6
     container_name: mysql
-    restart: always
+    #restart: always
     ports:
       - "3306:3306"
     environment:
