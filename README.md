@@ -49,6 +49,12 @@ bin/magento setup:install \
 
 ```
 
+### Using sample data
+
+```shell
+php bin/magento sampledata:deploy
+```
+
 ### Disable 2FA into your dev env
 
 ```shell
